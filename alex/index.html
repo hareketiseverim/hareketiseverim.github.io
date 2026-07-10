@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>alex</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Inter, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top right, #00d4ff40, transparent 40%),
+                linear-gradient(135deg, #061426, #102d52);
+            color: white;
+        }
+
+        .cardx {
+            background: rgba(255, 255, 255, .08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 28px;
+            box-shadow: 0 20px 50px #0005;
+            width: 100%;
+            min-width: 0;
+        }
+
+        .login {
+            position: fixed;
+            inset: 0;
+            background: #061426;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .login-box {
+            width: 90%;
+            max-width: 380px;
+            padding: 40px;
+        }
+
+        input {
+            background: #ffffff15 !important;
+            border: 1px solid #ffffff25 !important;
+            color: white !important;
+            height: 52px !important;
+        }
+
+        input::placeholder {
+            color: #aaa !important;
+        }
+
+        .btn-main {
+            height: 52px;
+            background: #00d4ff;
+            font-weight: 800;
+        }
+
+        .title {
+            font-size: 42px;
+            font-weight: 800;
+        }
+
+        .small {
+            font-size: 13px;
+            opacity: .65;
+        }
+
+        .number {
+            font-size: 34px;
+            font-weight: 800;
+        }
+
+        .green {
+            color: #00ffa3;
+        }
+
+        .red {
+            color: #ff7676;
+        }
+
+        .blue {
+            color: #00d4ff;
+        }
+
+        .filter {
+            background: #ffffff15;
+            color: white;
+            border: 0;
+            border-radius: 30px;
+            padding: 10px 25px;
+        }
+
+        .filter.active {
+            background: #00d4ff;
+            color: #000;
+            font-weight: bold;
+        }
+
+        canvas {
+            width: 100% !important;
+        }
+
+        .chart-box {
+            height: 300px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="login" class="login">
+        <div class="cardx login-box">
+            <h2>
+                <!-- alex -->
+            </h2>
+
+            <div class="small mb-4">
+                <!-- Finans takip paneli -->
+            </div>
+
+            <input id="password" type="password" class="form-control mb-3" placeholder="parola">
+            <button onclick="login()" class="btn btn-main w-100"> giriş </button>
+            <div id="error" class="text-danger mt-3"></div>
+        </div>
+    </div>
+    <div id="app" style="display:none">
+        <div class="container py-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap mb-4">
+                <div>
+                    <div class="title">
+                        <img src="https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/alex/img/alex.jpg"
+                            style="width:40px; border-radius:50%; margin-right:10px" />
+                        <span>alex</span>
+                    </div>
+                    <div class="small">
+                        <!-- Kişisel Finans Yönetimi -->
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="cardx px-4 py-2">
+                        <span id="lastDate" class="small"></span>
+                    </div>
+                    <button onclick="logout()" class="btn btn-outline-light"> Çıkış </button>
+                </div>
+            </div>
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="cardx p-4 h-100">
+                        <div class="small"> Gelir </div>
+                        <div id="income" class="number green">
+                            0 ₺
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="cardx p-4 h-100">
+                        <div class="small"> Gider </div>
+                        <div id="expense" class="number red">
+                            0 ₺
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="cardx p-4 h-100">
+                        <div class="small"> Bakiye </div>
+                        <div id="balance" class="number blue">
+                            0 ₺
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="cardx p-3 mb-4 d-flex gap-2 flex-wrap">
+                <button class="filter active" onclick="changeFilter('gun',this)"> Günlük </button>
+                <button class="filter" onclick="changeFilter('ay',this)"> Aylık </button>
+                <button class="filter" onclick="changeFilter('yil',this)"> Yıllık </button>
+            </div>
+            <div class="row g-4 mb-4">
+                <div class="col-lg-7">
+                    <div class="cardx p-4">
+                        <h5> Gelir / Gider </h5>
+                        <div class="chart-box">
+                            <canvas id="mainChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="cardx p-4">
+                        <h5> Kategori </h5>
+                        <div class="chart-box">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <div class="cardx p-4">
+                        <h5> Bakiye Değişimi </h5>
+                        <div class="chart-box">
+                            <canvas id="balanceChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="list"></div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            password: "1",
+            dummy: false,
+            url: "https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/alex/alex.json"
+        };
+
+        const SAMPLE = [
+            {
+                date: "2026-07-10",
+                transactions: [
+                    {
+                        type: "gelir",
+                        category: "bakiye",
+                        title: "bakiye",
+                        amount: 100.10
+                    },
+                    {
+                        type: "gider",
+                        category: "alisveris",
+                        title: "kalem",
+                        amount: 10.01
+                    }
+                ]
+            }
+        ];
+
+        let DATA = [];
+        let FILTER = "gun";
+        let CHART = {};
+
+        function money(x) {
+            return new Intl.NumberFormat("tr-TR").format(x) + " ₺";
+        }
+
+        async function getData() {
+            if (CONFIG.dummy) {
+                return SAMPLE;
+            }
+
+            let r = await fetch(CONFIG.url);
+            return await r.json();
+        }
+
+        function login() {
+            let pass = document.getElementById("password").value;
+
+            if (pass === CONFIG.password) {
+                localStorage.setItem("alex_login", "1");
+                openApp();
+            }
+            else {
+                document.getElementById("error").innerHTML = "hatalı parola";
+            }
+        }
+
+        function openApp() {
+            document.getElementById("login").style.display = "none";
+            document.getElementById("app").style.display = "block";
+            init();
+        }
+
+        function logout() {
+            localStorage.removeItem("alex_login");
+            location.reload();
+        }
+
+        window.onload = function () {
+            let p = document.getElementById("password");
+            p.focus();
+
+            p.addEventListener(
+                "keydown",
+                function (e) {
+                    if (e.key === "Enter") {
+                        login();
+                    }
+                });
+
+            if (localStorage.getItem("alex_login") === "1") {
+                openApp();
+            }
+        };
+
+        function init() {
+            getData().then(d => {
+                DATA = d;
+                render();
+            });
+        }
+
+        function changeFilter(type, btn) {
+            FILTER = type;
+            document.querySelectorAll(".filter").forEach(x => {
+                x.classList.remove("active");
+            });
+            btn.classList.add("active");
+            render();
+        }
+
+        function groupData() {
+            let groups = {};
+            DATA.forEach(day => {
+                let key = "";
+
+                if (FILTER === "gun") {
+                    key = day.date;
+                }
+
+                if (FILTER === "ay") {
+                    key = day.date.substring(0, 7);
+                }
+
+                if (FILTER === "yil") {
+                    key = day.date.substring(0, 4);
+                }
+
+                if (!groups[key]) {
+                    groups[key] = {
+                        etiket: key,
+                        gelir: 0,
+                        gider: 0,
+                        category: {}
+                    };
+                }
+
+                day.transactions.forEach(i => {
+                    if (i.type === "gelir") {
+                        groups[key].gelir += i.amount;
+                    }
+                    else {
+                        groups[key].gider += i.amount;
+
+                        if (!groups[key].category[i.category]) {
+                            groups[key].category[i.category] = 0;
+                        }
+                        groups[key].category[i.category] += i.amount;
+                    }
+                });
+            });
+
+            return Object.values(groups).sort((a, b) => a.etiket.localeCompare(b.etiket));
+        }
+
+        function render() {
+            let data = groupData();
+            let gelir = 0;
+            let gider = 0;
+
+            data.forEach(x => {
+                gelir += x.gelir;
+                gider += x.gider;
+            });
+
+            document.getElementById("income").innerHTML = money(gelir);
+            document.getElementById("expense").innerHTML = money(gider);
+            document.getElementById("balance").innerHTML = money(gelir - gider);
+            renderList(data);
+            renderCharts(data);
+            document.getElementById("lastDate").innerText = data[data.length - 1]?.etiket ?? "";
+        }
+
+        function renderList(data) {
+            let html = "";
+            data.slice().reverse().forEach(x => {
+                html += `
+                            <div class="cardx p-4 mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h5> ${x.etiket} </h5>
+                                        <div class="small"> Dönem Özeti </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="green"> +${money(x.gelir)} </div>
+                                        <div class="red"> -${money(x.gider)} </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="small"> Net </div>
+                                        <div class="blue"> ${money(x.gelir - x.gider)} </div>
+                                    </div>
+                                    <div class="col-6 text-end">
+                                        <div class="small"> Kategori </div>
+                                        <div> ${Object.keys(x.category).length} </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+            });
+
+            document.getElementById("list").innerHTML = html;
+        }
+
+        function renderCharts(data) {
+            Object.values(CHART).forEach(c => {
+                if (c) {
+                    c.destroy();
+                }
+            });
+
+            let labels = data.map(x => x.etiket);
+            let gelir = data.map(x => x.gelir);
+            let gider = data.map(x => x.gider);
+            let category = {};
+
+            data.forEach(x => {
+                Object.keys(x.category).forEach(k => {
+                    if (!category[k]) {
+                        category[k] = 0;
+                    }
+                    category[k] += x.category[k];
+                });
+            });
+
+            Chart.defaults.color = "#fff";
+            CHART.main = new Chart(
+                document.getElementById("mainChart"),
+                {
+                    type: "bar",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: "Gelir",
+                                data: gelir,
+                                backgroundColor: "#00ffa3"
+                            },
+                            {
+                                label: "Gider",
+                                data: gider,
+                                backgroundColor: "#ff7676"
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: "#fff"
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: "#fff"
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: "#fff"
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            CHART.category = new Chart(
+                document.getElementById("categoryChart"),
+                {
+                    type: "doughnut",
+                    data: {
+                        labels: Object.keys(category),
+                        datasets: [{
+                            data: Object.values(category),
+                            backgroundColor: [
+                                "#00d4ff",
+                                "#00ffa3",
+                                "#ff7676",
+                                "#ffd43b",
+                                "#a855f7"
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: "#fff"
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            let bakiye = 0;
+            let trend = [];
+
+            data.forEach(x => {
+                bakiye += x.gelir - x.gider;
+                trend.push(bakiye);
+            });
+
+            CHART.balance = new Chart(
+                document.getElementById("balanceChart"),
+                {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: "Bakiye",
+                            data: trend,
+                            borderColor: "#00d4ff",
+                            backgroundColor: "#00d4ff33",
+                            fill: true,
+                            tension: .4,
+                            borderWidth: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: "#fff"
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: {
+                                    color: "#fff"
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    color: "#fff"
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+    </script>
+</body>
+
+</html>
