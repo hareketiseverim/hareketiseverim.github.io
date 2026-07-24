@@ -1,17 +1,144 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>hareketi severim</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            margin: 0;
+            background: #e6e1e1;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        :root {
+            --circle-size: min(90vw, 700px);
+            --center-size: calc(var(--circle-size)*0.29);
+            --item-size: calc(var(--circle-size)*0.20);
+            --radius: calc(var(--circle-size)*0.37);
+        }
+
+        #circle {
+            position: relative;
+            width: var(--circle-size);
+            height: var(--circle-size);
+            margin: auto;
+        }
+
+        .center {
+            position: absolute;
+            width: var(--center-size);
+            height: var(--center-size);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .2);
+        }
+
+        .center img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .item {
+            position: absolute;
+            width: var(--item-size);
+            height: var(--item-size);
+            border-radius: 50%;
+            overflow: hidden;
+            transition: .3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, .25);
+        }
+
+        .item:hover {
+            transform: scale(1.08);
+            z-index: 10;
+        }
+
+        .item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @media (max-width:576px) {
+
+            :root {
+                --circle-size: 92vw;
+                --radius: calc(var(--circle-size)*0.34);
+            }
+
+            body {
+                overflow: auto;
+            }
+
+        }
+    </style>
 </head>
 
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-        <img src="https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/julian/img/julian.gif"
-            alt="Loading..." style="width: 200px; height: 200px; border-radius: 50%;">
+    <div class="container-fluid vh-100 d-flex justify-content-center align-items-center">
+        <div id="circle">
+            <a href="#" class="center">
+                <img src="https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/julian/img/julian.gif">
+            </a>
+        </div>
     </div>
+
+    <script>
+        const items = [
+            {
+                img: "https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/melman/img/melman.gif",
+                link: "https://hareketiseverim.github.io/melman"
+            },
+            {
+                img: "https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/alex/img/alex.jpg",
+                link: "https://hareketiseverim.github.io/alex"
+            },
+            {
+                img: "https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/marty/img/marty.png",
+                link: "https://hareketiseverim.github.io/marty"
+            }
+        ];
+
+        const container = document.getElementById("circle");
+
+        function draw() {
+            document.querySelectorAll(".item").forEach(e => e.remove());
+
+            const circleSize = container.offsetWidth;
+            const radius = circleSize * 0.37;
+            const itemSize = circleSize * 0.20;
+            const startAngle = -90;
+
+            items.forEach((item, index) => {
+                const angle = (360 / items.length) * index + startAngle;
+                const rad = angle * Math.PI / 180;
+                const x = Math.cos(rad) * radius;
+                const y = Math.sin(rad) * radius;
+                const a = document.createElement("a");
+
+                a.href = item.link;
+                a.target = "_blank";
+                a.className = "item";
+                a.style.left = `calc(50% + ${x}px - ${itemSize / 2}px)`;
+                a.style.top = `calc(50% + ${y}px - ${itemSize / 2}px)`;
+                a.innerHTML = `<img src="${item.img}" alt="">`;
+
+                container.appendChild(a);
+            });
+        }
+
+        draw();
+        window.addEventListener("resize", draw);
+    </script>
 </body>
 
 </html>
