@@ -50,6 +50,11 @@
                     "systolic": 11.6,
                     "diastolic": 7.4,
                     "pulse": 73
+                },
+                "bodyComposition": {
+                    "skeletalMuscleKg": 25,
+                    "bodyFatPercentage": 29.1,
+                    "bodyWaterPercentage": 55.2
                 }
             },
             {
@@ -59,6 +64,11 @@
                     "systolic": 11.4,
                     "diastolic": 7.8,
                     "pulse": 79
+                },
+                "bodyComposition": {
+                    "skeletalMuscleKg": 26,
+                    "bodyFatPercentage": 28.1,
+                    "bodyWaterPercentage": 54.2
                 }
             }
         ];
@@ -144,6 +154,12 @@
                     </div>
                 </div>
 
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <canvas id="c4"></canvas>
+                    </div>
+                </div>
+
             </div>
 
         </div>
@@ -210,7 +226,7 @@
         </script>
         <script>
 
-            let c1, c2, c3;
+            let c1, c2, c3, c4;
 
             function draw() {
 
@@ -219,16 +235,19 @@
                 if (c1) c1.destroy();
                 if (c2) c2.destroy();
                 if (c3) c3.destroy();
+                if (c4) c4.destroy();
 
                 c1 = new Chart(document.getElementById("c1"), {
                     type: "line",
                     data: {
                         labels,
-                        datasets: [{
-                            label: "Kilo",
-                            data: healthData.map(x => x.weight ?? 0),
-                            borderColor: "blue"
-                        }]
+                        datasets: [
+                            {
+                                label: "Kilo",
+                                data: healthData.map(x => x.weight ?? 0),
+                                borderColor: "blue"
+                            }
+                        ]
                     }
                 });
 
@@ -260,6 +279,37 @@
                                 label: "Düşük Tansiyon",
                                 data: healthData.map(x => x.bloodPressure?.diastolic ?? 0),
                                 borderColor: "orange"
+                            }
+                        ]
+                    }
+                });
+
+                c4 = new Chart(document.getElementById("c4"), {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: "Kilo",
+                                data: healthData.map(x => x.weight ?? 0),
+                                borderColor: "blue",
+                                hidden: true
+                            },
+                            {
+                                label: "İskelet Kası (kg)",
+                                data: healthData.map(x => x.bodyComposition?.skeletalMuscleKg ?? 0),
+                                borderColor: "green"
+                            },
+                            {
+                                label: "Vücut Yağ Yüzdesi",
+                                data: healthData.map(x => x.bodyComposition?.bodyFatPercentage ?? 0),
+                                borderColor: "red"
+                            },
+                            {
+                                label: "Vücut Su Yüzdesi",
+                                data: healthData.map(x => x.bodyComposition?.bodyWaterPercentage ?? 0),
+                                borderColor: "turquoise",
+                                hidden: true
                             }
                         ]
                     }
