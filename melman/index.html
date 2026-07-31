@@ -160,6 +160,11 @@
                     </div>
                 </div>
 
+                <div class="col-md-6">
+                    <div class="card p-3">
+                        <canvas id="c5"></canvas>
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -225,8 +230,49 @@
 
         </script>
         <script>
+            const BodyCompositionAnalyzer = {
 
-            let c1, c2, c3, c4;
+                // Günlük Vücut Kompozisyon İndeksi
+                indexSeries(data) {
+
+                    return data.map(x => {
+
+                        const weight = x.weight ?? 0;
+                        const muscle = x.bodyComposition?.skeletalMuscleKg ?? 0;
+                        const fat = x.bodyComposition?.bodyFatPercentage ?? 0;
+                        const water = x.bodyComposition?.bodyWaterPercentage ?? 52.5;
+
+                        if (!weight || !muscle || !fat)
+                            return 0;
+
+
+                        const muscleRatio = muscle / weight;
+                        const fatRatio = fat / 100;
+
+
+                        // Kadınlar için su oranı merkez noktası
+                        const waterFactor = Math.max(
+                            0.80,
+                            1 - Math.abs(water - 52.5) / 50
+                        );
+
+
+                        const index =
+                            (muscleRatio / fatRatio) *
+                            waterFactor *
+                            100;
+
+
+                        return Number(index.toFixed(1));
+
+                    });
+
+                },
+            };
+        </script>
+        <script>
+
+            let c1, c2, c3, c4, c5;
 
             function draw() {
 
@@ -236,6 +282,7 @@
                 if (c2) c2.destroy();
                 if (c3) c3.destroy();
                 if (c4) c4.destroy();
+                if (c5) c5.destroy();
 
                 c1 = new Chart(document.getElementById("c1"), {
                     type: "line",
@@ -310,6 +357,22 @@
                                 data: healthData.map(x => x.bodyComposition?.bodyWaterPercentage ?? 0),
                                 borderColor: "turquoise",
                                 hidden: true
+                            }
+                        ]
+                    }
+                });
+
+                c5 = new Chart(document.getElementById("c5"), {
+                    type: "line",
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: "Vücut Kompozisyon İndeksi",
+                                data: BodyCompositionAnalyzer.indexSeries(healthData),
+                                borderColor: "#9C27B0",
+                                borderWidth: 3,
+                                tension: 0.3
                             }
                         ]
                     }
