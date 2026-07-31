@@ -4,29 +4,44 @@
 <head>
     <meta charset="UTF-8">
     <title>hareketi severim</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
             background: #e6e1e1;
-            min-height: 100vh;
             overflow: hidden;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         :root {
             --circle-size: min(90vw, 700px);
-            --center-size: calc(var(--circle-size)*0.29);
-            --item-size: calc(var(--circle-size)*0.20);
-            --radius: calc(var(--circle-size)*0.37);
+            --center-size: calc(var(--circle-size) * 0.29);
+            --item-size: calc(var(--circle-size) * 0.20);
+        }
+
+        #scene {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #circle {
             position: relative;
             width: var(--circle-size);
             height: var(--circle-size);
-            margin: auto;
         }
 
         .center {
@@ -38,7 +53,9 @@
             transform: translate(-50%, -50%);
             border-radius: 50%;
             overflow: hidden;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, .2);
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, .3);
         }
 
         .center img {
@@ -53,13 +70,8 @@
             height: var(--item-size);
             border-radius: 50%;
             overflow: hidden;
-            transition: .3s;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, .25);
-        }
-
-        .item:hover {
-            transform: scale(1.08);
-            z-index: 10;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+            will-change: left, top, transform;
         }
 
         .item img {
@@ -68,10 +80,30 @@
             object-fit: cover;
         }
 
-        @media (max-width:576px) {
+        .item.moving {
+            z-index: 500;
+        }
+
+        .item.big {
+            transform: scale(1.08);
+        }
+    </style>
+    <style>
+        .item {
+            transition: filter .25s ease;
+        }
+
+        .item.active {
+            filter: brightness(1.15);
+        }
+
+        .center:active {
+            transform: translate(-50%, -50%) scale(.96);
+        }
+
+        @media(max-width:600px) {
             :root {
                 --circle-size: 92vw;
-                --radius: calc(var(--circle-size)*0.34);
             }
 
             body {
@@ -82,14 +114,13 @@
 </head>
 
 <body>
-    <div class="container-fluid vh-100 d-flex justify-content-center align-items-center">
+    <div id="scene">
         <div id="circle">
-            <a href="#" class="center">
+            <a href="#" class="center" id="centerItem">
                 <img src="https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/julian/img/julian.gif">
             </a>
         </div>
     </div>
-
     <script>
         const items = [
             {
@@ -106,36 +137,344 @@
             }
         ];
 
-        const container = document.getElementById("circle");
+        const circle = document.getElementById("circle");
+        const centerItem = document.getElementById("centerItem");
 
-        function draw() {
-            document.querySelectorAll(".item").forEach(e => e.remove());
+        let elements = [];
+        let positions = [];
+        let currentSlots = [];
+        let locked = false;
+        let rotation = 0;
+        let slotMap = [];
 
-            const circleSize = container.offsetWidth;
-            const radius = circleSize * 0.37;
-            const itemSize = circleSize * 0.20;
-            const startAngle = -90;
+        const settings = {
+            radiusFactor: 0.37,
+            itemFactor: 0.20,
+            startAngle: -90,
+            spinDuration: 5000,
+            shuffleDuration: 4000
+        };
 
-            items.forEach((item, index) => {
-                const angle = (360 / items.length) * index + startAngle;
-                const rad = angle * Math.PI / 180;
-                const x = Math.cos(rad) * radius;
-                const y = Math.sin(rad) * radius;
-                const a = document.createElement("a");
+        function initSlots() {
+            slotMap = [];
+            for (let i = 0; i < elements.length; i++) {
+                slotMap.push(i);
+            }
+        }
 
-                a.href = item.link;
-                a.target = "_blank";
-                a.className = "item";
-                a.style.left = `calc(50% + ${x}px - ${itemSize / 2}px)`;
-                a.style.top = `calc(50% + ${y}px - ${itemSize / 2}px)`;
-                a.innerHTML = `<img src="${item.img}" alt="">`;
+        function swap(arr, a, b) {
+            const temp = arr[a];
+            arr[a] = arr[b];
+            arr[b] = temp;
+        }
 
-                container.appendChild(a);
+        function animateToSlot(element, slot, duration = 500) {
+            return new Promise(resolve => {
+                const start = performance.now();
+                const from = {
+                    x: element.offsetLeft,
+                    y: element.offsetTop
+                };
+
+                const target = calculatePosition(slot);
+                const size = getCircleSize();
+                const itemSize = size * settings.itemFactor;
+                const to = {
+                    x: size / 2 - itemSize / 2 + target.x,
+                    y: size / 2 - itemSize / 2 + target.y
+                };
+
+                element.classList.add("moving");
+                function frame(now) {
+                    let t = (now - start) / duration;
+                    if (t > 1) t = 1;
+                    const ease = easeInOut(t);
+                    const x = from.x + (to.x - from.x) * ease;
+                    const y = from.y + (to.y - from.y) * ease;
+                    element.style.left = x + "px";
+                    element.style.top = y + "px";
+                    if (t < 1) {
+                        requestAnimationFrame(frame);
+                    } else {
+                        element.classList.remove("moving");
+                        resolve();
+                    }
+                }
+                requestAnimationFrame(frame);
             });
         }
 
-        draw();
-        window.addEventListener("resize", draw);
+        async function shuffleDeck() {
+            const total = elements.length;
+            for (let i = 0; i < 18; i++) {
+                let a = randomNumber(0, total - 1);
+                let b = randomNumber(0, total - 1);
+                while (a === b) {
+                    b = randomNumber(0, total - 1);
+                }
+                swap(slotMap, a, b);
+
+                await Promise.all([
+                    animateToSlot(elements[a], slotMap[a], 200),
+                    animateToSlot(elements[b], slotMap[b], 200)
+                ]);
+                await sleep(randomNumber(10, 25));
+            }
+        }
+
+        async function bringBackHome() {
+            for (let i = 0; i < elements.length; i++) {
+                slotMap[i] = i;
+            }
+            await Promise.all(
+                elements.map((el, index) => {
+                    return animateToSlot(el, index, 1000);
+                })
+            );
+        }
+
+        function getCircleSize() {
+            return circle.offsetWidth;
+        }
+
+        function calculatePosition(index, angleOffset = 0) {
+            const size = getCircleSize();
+            const radius = size * settings.radiusFactor;
+            const angle = (360 / items.length) * index + settings.startAngle + angleOffset;
+            const rad = angle * Math.PI / 180;
+            return {
+                x: Math.cos(rad) * radius,
+                y: Math.sin(rad) * radius
+            };
+        }
+
+        function createItems() {
+            items.forEach((item, index) => {
+                const a = document.createElement("a");
+                a.className = "item";
+                a.href = item.link;
+                a.target = "_blank";
+                const img = document.createElement("img");
+                img.src = item.img;
+                a.appendChild(img);
+                circle.appendChild(a);
+                elements.push(a);
+                positions.push({
+                    index: index,
+                    x: 0,
+                    y: 0
+                });
+                currentSlots.push(index);
+            });
+        }
+
+        function placeItems(angle = 0) {
+            elements.forEach((el, index) => {
+                const pos = calculatePosition(index, angle);
+                positions[index].x = pos.x;
+                positions[index].y = pos.y;
+                const size = getCircleSize();
+                const itemSize = size * settings.itemFactor;
+                el.style.left = `calc(50% + ${pos.x}px - ${itemSize / 2}px)`;
+                el.style.top = `calc(50% + ${pos.y}px - ${itemSize / 2}px)`;
+            });
+        }
+
+        function moveElement(el, x, y, duration = 0) {
+            const size = getCircleSize();
+            const itemSize = size * settings.itemFactor;
+            el.style.transition = `left ${duration}ms ease, top ${duration}ms ease, transform ${duration}ms ease`;
+            el.style.left = `calc(50% + ${x}px - ${itemSize / 2}px)`;
+            el.style.top = `calc(50% + ${y}px - ${itemSize / 2}px)`;
+        }
+
+        createItems();
+        initSlots();
+        placeItems();
+        window.addEventListener("resize", () => {
+            if (!locked) {
+                placeItems(rotation);
+            }
+        });
+
+        function easeInOut(t) {
+            return t < 0.5 ? 2 * Math.pow(t, 2) : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        }
+
+        function easeInExpo(t) {
+            return t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+        }
+
+        function easeOutCubic(t) {
+            return 1 - Math.pow(1 - t, 3);
+        }
+
+        function animateRotation() {
+            return new Promise(resolve => {
+                const start = performance.now();
+                const totalRotation = 360 * 8;
+                function frame(now) {
+                    const elapsed = now - start;
+                    let t = elapsed / settings.spinDuration;
+                    if (t > 1) {
+                        t = 1;
+                    }
+                    let progress;
+                    if (t < 0.65) {
+                        progress = easeInExpo(t / 0.65) * 0.85;
+                    } else {
+                        progress = 0.85 + easeOutCubic((t - 0.65) / 0.35) * 0.15;
+                    }
+                    rotation = totalRotation * progress;
+                    placeItems(rotation);
+                    if (t < 1) {
+                        requestAnimationFrame(frame);
+                    } else {
+                        rotation = 0;
+                        placeItems(0);
+                        resolve();
+                    }
+                }
+                requestAnimationFrame(frame);
+            });
+        }
+
+        function randomNumber(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => {
+                setTimeout(resolve, ms);
+            });
+        }
+
+        function shuffleArray(array) {
+            const copy = [...array];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy;
+        }
+
+        function animateSwap(el, from, to, duration) {
+            return new Promise(resolve => {
+                const start = performance.now();
+                el.classList.add("moving");
+                el.classList.add("active");
+                const heightCurve = 80;
+
+                function frame(now) {
+                    let t = (now - start) / duration;
+                    if (t > 1) {
+                        t = 1;
+                    }
+                    const ease = easeInOut(t);
+                    const x = from.x + (to.x - from.x) * ease;
+                    let y = from.y + (to.y - from.y) * ease;
+                    y -= Math.sin(Math.PI * ease) * heightCurve;
+                    moveElement(el, x, y, 0);
+                    if (t < 1) {
+                        requestAnimationFrame(frame);
+                    } else {
+                        moveElement(el, to.x, to.y, 0);
+                        el.classList.remove("moving");
+                        el.classList.remove("active");
+                        resolve();
+                    }
+                }
+                requestAnimationFrame(frame);
+            });
+        }
+
+        async function startAnimation() {
+            if (locked) {
+                return;
+            }
+            locked = true;
+            centerItem.style.pointerEvents = "none";
+            await animateRotation();
+            await shuffleDeck();
+            await sleep(300);
+            await bringBackHome();
+            await sleep(300);
+            centerItem.style.pointerEvents = "auto";
+            locked = false;
+        }
+        centerItem.addEventListener("click", function (e) {
+            e.preventDefault();
+            startAnimation();
+        });
+
+        function pulseCenter() {
+            centerItem.animate(
+                [
+                    {
+                        transform: "translate(-50%,-50%) scale(1)"
+                    },
+                    {
+                        transform: "translate(-50%,-50%) scale(1.05)"
+                    },
+                    {
+                        transform: "translate(-50%,-50%) scale(1)"
+                    }
+                ],
+                {
+                    duration: 700,
+                    easing: "ease-in-out"
+                }
+            );
+        }
+
+        function randomShuffleDelay() {
+            return randomNumber(50, 180);
+        }
+
+        async function masterAnimation() {
+            if (locked) {
+                return;
+            }
+            locked = true;
+            centerItem.style.cursor = "default";
+            pulseCenter();
+            await animateRotation();
+            await sleep(250);
+            await sleep(300);
+            placeItems(0);
+            rotation = 0;
+            locked = false;
+            centerItem.style.cursor = "pointer";
+        }
+
+        centerItem.onclick = function (e) {
+            e.preventDefault();
+            masterAnimation();
+        };
+
+        function refreshLayout() {
+            if (!locked) {
+                placeItems(rotation);
+            }
+        }
+
+        window.addEventListener("resize", refreshLayout);
+
+        elements.forEach((el, index) => {
+            el.addEventListener("mouseenter", () => {
+                if (!locked) {
+                    el.classList.add("active");
+                }
+            });
+
+            el.addEventListener("mouseleave", () => {
+                el.classList.remove("active");
+            });
+        });
+
+        setTimeout(() => {
+            placeItems(0);
+        }, 100);
     </script>
 </body>
 
