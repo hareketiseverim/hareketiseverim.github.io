@@ -1,1 +1,251 @@
+<!doctype html>
+<html lang="tr">
 
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>mort</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #f5f7fb
+        }
+
+        .card {
+            border: 0;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px #0001
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="login" class="container min-vh-100 d-flex align-items-center justify-content-center">
+        <div class="card p-4" style="max-width:380px;width:100%">
+            <h3 class="text-center mb-3"></h3>
+
+            <input autofocus id="pass" class="form-control mb-3" type="password" placeholder="parola"
+                onkeypress="if(event.key === 'Enter') login()" />
+
+            <button id="login-button" type="button" class="btn btn-primary w-100" onclick="login()"> giriş </button>
+
+            <div id="err" class="text-danger text-center mt-3 d-none"> hatalı parola </div>
+
+        </div>
+    </div>
+
+    <div id="app" class="d-none">
+        <div class="container py-4">
+
+            <div class="d-flex justify-content-between mb-4">
+                <h2>
+                    <img src="https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/mort/img/mort.png"
+                        width="36" height="36" class="rounded">
+                    <span>mort</span>
+                </h2>
+                <select id="year" class="form-select w-auto"></select>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="card p-3 text-center">
+                        <small>Gereken</small>
+                        <h3 id="need">0</h3>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card p-3 text-center">
+                        <small>Bugüne Kadar</small>
+                        <h3 id="todayNeed">0</h3>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card p-3 text-center">
+                        <small>Gidilen</small>
+                        <h3 id="done">0</h3>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card p-3 text-center">
+                        <small>Bakiye</small>
+                        <h3 id="balance">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div id="months" class="row g-3"></div>
+
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            password: "1",
+            isDummyData: false
+        }
+        const DUMMY_DATA = [
+            "01.01.2026",
+            "02.01.2026",
+            "03.01.2026"
+        ];
+        let officeDays = [];
+        let selectedYear = new Date().getFullYear();
+        let now = new Date();
+
+        async function login() {
+            if (document.getElementById("pass").value === CONFIG.password) {
+                document.getElementById("login").classList.add("d-none");
+                document.getElementById("app").classList.remove("d-none");
+                await loadData();
+            } else {
+                document.getElementById("err").classList.remove("d-none");
+                document.getElementById("pass").value = "";
+            }
+
+        }
+
+        async function loadData() {
+            let j;
+            if (CONFIG.isDummyData) {
+                j = DUMMY_DATA;
+            } else {
+                let r = await fetch("https://raw.githubusercontent.com/hareketiseverim/data/refs/heads/main/mort/mort.json");
+                j = await r.json();
+            }
+
+            officeDays = j || [];
+
+            years();
+            drawMonths();
+            calc();
+        }
+
+        function years() {
+            let y = [...new Set(officeDays.map(x => +x.split(".")[2]))];
+            if (!y.includes(selectedYear)) y.push(selectedYear);
+            y.sort();
+            year.innerHTML = "";
+            y.forEach(x => year.innerHTML += `<option ${x == selectedYear ? "selected" : ""}>${x}</option>`);
+        }
+
+        year.onchange = () => {
+            selectedYear = +year.value;
+            calc();
+        }
+
+        const names = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+        function drawMonths() {
+            months.innerHTML = "";
+            names.forEach((x, i) => {
+                months.innerHTML += `
+                    <div class="col-6 col-md-4">
+                        <div class="card p-3">
+                            <h5>${x}</h5>
+                            <div>Gereken: <b id="r${i}">0</b></div>
+                            <div>Gidilen: <b id="v${i}">0</b></div>
+                            <div>Bakiye: <b id="b${i}">0</b></div>
+                        </div>
+                    </div>`;
+            });
+        }
+        const holidays = [
+            "01.01", "23.04", "01.05", "19.05",
+            "15.07", "30.08", "29.10"
+        ];
+
+        function fmt(d) {
+            return String(d.getDate()).padStart(2, "0") + "." + String(d.getMonth() + 1).padStart(2, "0") + "." + d.getFullYear();
+        }
+
+        function holiday(d) {
+            let x = fmt(d).slice(0, 5);
+            return holidays.includes(x);
+        }
+
+        function officeRule(m) {
+            return [0, 1, 2, 6, 7, 8].includes(m) ? [1, 3] : [2, 4];
+        }
+
+        function requiredDays(y, m) {
+            let arr = [];
+            let last = new Date(y, m + 1, 0).getDate();
+            let days = officeRule(m);
+
+            for (let i = 1; i <= last; i++) {
+                let d = new Date(y, m, i);
+                if (days.includes(d.getDay()) && !holiday(d)) arr.push(d);
+            }
+
+            return arr;
+        }
+
+        function visited(y, m) {
+            return officeDays.filter(x => {
+                let p = x.split(".");
+                return +p[2] == y && +p[1] == m + 1;
+            });
+        }
+
+        function calc() {
+            let total = 0, today = 0, done = 0, balance = 0;
+
+            for (let m = 0; m < 12; m++) {
+                let req = requiredDays(selectedYear, m);
+                let vis = visited(selectedYear, m);
+                let need = req.length;
+                let visit = vis.length;
+                let bal = visit - need;
+
+                total += need;
+                done += visit;
+                balance += bal;
+
+                let status = new Date(selectedYear, m, 1);
+
+                if (status <= now) {
+                    if (selectedYear < now.getFullYear() || m < now.getMonth())
+                        today += need;
+                    else if (m == now.getMonth())
+                        today += req.filter(x => x <= now).length;
+                }
+
+                document.getElementById("r" + m).innerHTML = need;
+                document.getElementById("v" + m).innerHTML = visit;
+
+                let b = document.getElementById("b" + m);
+                b.innerHTML = bal > 0 ? "+" + bal : bal;
+
+                b.className = bal > 0 ? "text-success" : bal < 0 ? "text-danger" : "text-secondary";
+            }
+
+            need.innerHTML = total;
+            todayNeed.innerHTML = today;
+            done.innerHTML = done;
+            balance.innerHTML = balance > 0 ? "+" + balance : balance;
+
+            balance.className = balance > 0 ? "text-success" : balance < 0 ? "text-danger" : "text-secondary";
+
+            document.getElementById("done").innerHTML = done;
+            document.getElementById("balance").innerHTML = balance > 0 ? "+" + balance : balance;
+            document.getElementById("balance").className = balance > 0 ? "text-success" : balance < 0 ? "text-danger" : "text-secondary";
+        }
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById("login-button").addEventListener("click", checkLogin);
+            document.getElementById("pass").addEventListener("keypress", event => {
+                if (event.key === "Enter") {
+                    checkLogin();
+                }
+            });
+            document.getElementById("pass").focus();
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
